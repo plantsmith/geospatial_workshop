@@ -10,7 +10,7 @@ library(tidyverse)
 library(terra)
 ```
 
-# Intro to Rasters:
+# Plot Rasters:
 
 -   Use 'describe' to load in .tif data (pulls from terra package)
 

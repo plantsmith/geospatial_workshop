@@ -9,21 +9,25 @@ editor: visual
 library(tidyverse)
 library(terra)
 ```
-- Use 'describe' to load in .tif data (pulls from terra package)
+
+# Intro to Rasters:
+
+-   Use 'describe' to load in .tif data (pulls from terra package)
 
 ```{r}
 # Load in the data
 describe("data/NEON-DS-Airborne-Remote-Sensing/HARV/DSM/HARV_dsmCrop.tif")  
 ```
 
-- This doesn't add anything to the environment, but it gives us statistics on the geography
-- To load the raster data into the environment use 'rast'
+-   This doesn't add anything to the environment, but it gives us statistics on the geography
+-   To load the raster data into the environment use 'rast'
 
 ```{r}
 HARV_DSM <- rast("data/NEON-DS-Airborne-Remote-Sensing/HARV/DSM/HARV_dsmCrop.tif")  
 ```
 
-- Summary Stats:
+-   Summary Stats:
+
 ```{r}
 # quick summary
 HARV_DSM 
@@ -59,24 +63,16 @@ ggplot()+
   coord_quickmap()
 ```
 
-What does coord_quickmap do? Taking our data and projecting it so its nice looking. 
-We didnt specify any parameters, and the default is Mercator projections. Terra has updated and we should be using **coord_sf** in the future.
+What does coord_quickmap do? Taking our data and projecting it so its nice looking. We didnt specify any parameters, and the default is Mercator projections. Terra has updated and we should be using **coord_sf** in the future.
 
 ```{r}
 #this uses the terra package
 plot(HARV_DSM)
 ```
 
-
 ```{r}
 nlyr(HARV_DSM)
 #how many bands there are in the data
-```
-
-Challenge: Load in other data (HARV_DSMhill) and print CRS
-```{r}
-HARV_DSM_hill <- rast("data/NEON-DS-Airborne-Remote-Sensing/HARV/DSM/HARV_dsmhill.tif") 
-crs(HARV_DSM_hill,proj = TRUE)
 ```
 
 ```{r}
@@ -86,14 +82,386 @@ ggplot()+
                  aes(x = HARV_dsmCrop))+
   theme_minimal()
 ```
+
 ```{r}
+#Creating breaks/groups to make maps, before we used continuous data
+# create 3 breaks (takes the range of data and split it in 3 equal parts)
 HARV_DSM_df <- HARV_DSM_df %>% 
   mutate(fct_elevation = cut (HARV_dsmCrop,
                               breaks = 3))
+
+# the number of points in each group in the n column created
+HARV_DSM_df %>% 
+  count(fct_elevation)
+
+#but what if I want to use custom groups
+custom_bins <- c(300, 350, 400, 450)
+
+#now you can create a new column in data set using the custom bins
+HARV_DSM_df <- HARV_DSM_df %>% 
+  mutate(fct_elevation_2 = cut (HARV_dsmCrop,
+                              breaks = custom_bins))
+
+HARV_DSM_df %>% 
+  count(fct_elevation_2)
+
 ```
 
+```{r}
+ggplot()+
+  geom_raster(data = HARV_DSM_df,
+              aes(x = x,
+                  y =y,
+                  fill = fct_elevation_2)) +
+    scale_fill_manual(values = terrain.colors(3))
 
+```
 
+-   When you put 'terrain.colors(3)' in the console it shows you your HEX codes.
+-   "#00A600" "#ECB176" "#F2F2F2"
 
+Challenge: Create 6 groups
 
+```{r}
+#6 bins
+custom_bins_6 <- c(300, 325, 350, 375 ,400, 425, 250)
 
+#now you can create a new column in data set using the custom bins
+HARV_DSM_df <- HARV_DSM_df %>% 
+  mutate(fct_elevation_3 = cut (HARV_dsmCrop,
+                              breaks = custom_bins_6))
+
+HARV_DSM_df %>% 
+  count(fct_elevation_3)
+
+ggplot()+
+  geom_raster(data = HARV_DSM_df,
+              aes(x = x,
+                  y =y,
+                  fill = fct_elevation_3)) +
+    scale_fill_manual(values = terrain.colors(6))
+```
+
+Now we're going to use the Hill Data:
+
+```{r}
+# Load in other data (HARV_DSMhill) and print CRS
+HARV_DSM_hill <- rast("data/NEON-DS-Airborne-Remote-Sensing/HARV/DSM/HARV_dsmhill.tif") 
+crs(HARV_DSM_hill,proj = TRUE)
+```
+
+If we are using ggplot, we want the raster to be in a dataframe
+
+```{r}
+#transform to dataframe
+HARV_DSM_hill_df <- as.data.frame(HARV_DSM_hill, xy =TRUE)
+
+#some stats
+# HARV_DSM_hill 
+```
+
+```{r}
+ggplot()+
+  geom_raster(data = HARV_DSM_hill_df,
+              aes(x = x, 
+                  y = y,
+                  alpha = HARV_DSMhill)) + 
+  scale_alpha(range= c(0.15, 0.65), guide = "none") + 
+  geom_raster(data= HARV_DSM_df,
+              aes(x = x, 
+                  y = y,
+                  fill = HARV_dsmCrop))+
+  scale_fill_viridis_c()+
+  coord_quickmap()
+# the alpha is the column of our hillshape (just the hillshape, not the elevation)
+# fill = name of the column
+# geom_rast is adding in our elevation
+# its layering two sets of data, which is why we have two ledgends. To take away legend for hillshape add guide = "none" 
+
+```
+
+Challenge: San Joaquin Data
+
+```{r}
+#Load in SJER data
+SJER_DTM <- rast("data/NEON-DS-Airborne-Remote-Sensing/SJER/DTM/SJER_dtmCrop.tif")
+
+#transform to dataframe
+SJER_DTM_df <- as.data.frame(SJER_DTM, xy=TRUE)
+
+#use crs to check coordinate reference system
+crs(SJER_DTM,proj = TRUE)
+#proj=utm +zone=11 +datum=WGS84 +units=m +no_defs
+```
+
+```{r}
+# plot the data
+ggplot()+
+  geom_raster(data=SJER_DTM_df,
+              aes(x = x, y = y,
+                  fill = SJER_dtmCrop))+
+  scale_fill_viridis_c() +
+  coord_quickmap()
+```
+
+```{r}
+ggplot()+
+  geom_histogram(data=SJER_DTM_df,
+                 aes(x = SJER_dtmCrop))+
+  theme_minimal()
+```
+
+```{r}
+#6 bins
+custom_bins_6 <- c(300, 325, 350, 375 ,400, 425, 250)
+
+#now you can create a new column in data set using the custom bins
+SJER_DTM_df <- SJER_DTM_df %>% 
+  mutate(fct_elevation_3 = cut (SJER_dtmCrop,
+                              breaks = custom_bins_6))
+
+SJER_DTM_df %>% 
+  count(fct_elevation_3)
+
+ggplot()+
+  geom_raster(data = SJER_DTM_df,
+              aes(x = x,
+                  y =y,
+                  fill = fct_elevation_3)) +
+    scale_fill_manual(values = terrain.colors(6))
+
+```
+
+If we are using ggplot, we want the raster to be in a dataframe
+
+```{r}
+
+# Load in other data (SJER_DTMhill) and print CRS
+SJER_DTM_hill <- rast("data/NEON-DS-Airborne-Remote-Sensing/SJER/DTM/SJER_dtmHill.tif") 
+
+#transform to dataframe
+SJER_DTM_hill_df <- as.data.frame(SJER_DTM_hill, xy =TRUE)
+
+```
+
+```{r}
+ggplot()+
+  geom_raster(data = SJER_DTM_hill_df,
+              aes(x = x, 
+                  y = y,
+                  alpha = SJER_dtmHill)) + 
+  scale_alpha(range= c(0.15, 0.65), guide = "none") + 
+      geom_raster(data= SJER_DTM_df,
+              aes(x = x, 
+                  y = y,
+                  fill = SJER_dtmCrop)) +
+  scale_fill_viridis_c()+
+  coord_quickmap()
+
+```
+
+# Reprojections:
+
+What do we do if we have data with different projections?
+
+Digital Surface Model (DSM) Digital Terrain Model (DTM) Canopy Height Model (CHM)
+
+```{r}
+# Load in the data
+DTM_HARV <- rast("data/NEON-DS-Airborne-Remote-Sensing/HARV/DTM/HARV_dtmCrop.tif")
+DTM_HARV
+DTM_hill_HARV <- rast("data/NEON-DS-Airborne-Remote-Sensing/HARV/DTM/HARV_DTMhill_WGS84.tif")
+DTM_hill_HARV 
+
+#you can check the coordinate systems by checking the quick summary
+```
+
+```{r}
+# plot(DTM_hill_HARV)
+```
+
+```{r}
+#transform rasters to dataframes
+DTM_HARV_df <- as.data.frame(DTM_HARV, xy=TRUE)
+DTM_hill_HARV_df <- as.data.frame(DTM_hill_HARV, xy=TRUE)
+```
+
+```{r}
+#plot the two dataframes
+ggplot()+
+    geom_raster(data= DTM_HARV_df,
+              aes(x = x, 
+                  y = y,
+                  fill = HARV_dtmCrop)) +
+  geom_raster(data = DTM_hill_HARV_df,
+              aes(x = x, 
+                  y = y,
+                  alpha = HARV_DTMhill_WGS84)) +
+  coord_quickmap()
+
+# this doesnt work because the two rasters have different projections 
+```
+
+put crs(DTM_HARV) in the console to see the projection --\> "WGS 84 / UTM zone 18N"
+
+crs(DTM_hill_HARV) --\> "WGS 84",\n DATUM\["World Geodetic System 1984
+
+```{r}
+#reproject the hillshade to match the DTM
+DTM_hill_UTM18n_HARV <- project(DTM_hill_HARV, crs(DTM_HARV), res=res(DTM_HARV))
+#res = I also want you to match the spatial resolution of the DTM
+
+# check the projection
+# DTM_hill_UTM18n_HARV
+```
+
+Compare the extent of each raster
+
+```{r}
+#compare the extent of the before and after of the hillside rasters uisng ext()
+# ext(DTM_hill_HARV)
+# ext(DTM_hill_UTM18n_HARV)
+#they are completely different bc we have reprojected the hillshade
+```
+
+Let’s next have a look at the resolution of our reprojected hillshade versus our original data.
+
+```{r}
+#resolution of the hillshade
+# res(DTM_hill_UTM18n_HARV)
+
+# #resolution of the DTM
+# res(DTM_HARV)
+```
+
+These two resolutions are different, but they’re representing the same data. We can tell R to force our newly reprojected raster to be 1m x 1m resolution by adding a line of code res=1 within the project() function. In the example below, we ensure a resolution match by using res(DTM_HARV) as a variable.
+
+```{r}
+#create a dataframe of the newly reprojected hillshade
+DTM_hill_UTM18n_HARV_df <- as.data.frame(DTM_hill_UTM18n_HARV, xy=TRUE)
+```
+
+```{r}
+ggplot()+
+    geom_raster(data= DTM_HARV_df,
+              aes(x = x, 
+                  y = y,
+                  fill = HARV_dtmCrop)) +
+  geom_raster(data = DTM_hill_UTM18n_HARV_df,
+              aes(x = x, 
+                  y = y,
+                  alpha = HARV_DTMhill_WGS84)) +
+  coord_quickmap()+
+  scale_fill_gradientn(name = "Elevation", colors = terrain.colors(10)) +
+  scale_alpha(range = c(0.65, 0.15), guide = "none")
+     coord_quickmap()
+```
+
+fyi: There is a hillside function where you can change the angle of the sun You could also play with the alpha - cuz atm its going from completely clear to black
+
+Challenge:
+
+```{r}
+# Load in the data for SJER_dsmCrop.tif and SJER_dsmHill.tif
+SJER_DSM <- rast("data/NEON-DS-Airborne-Remote-Sensing/SJER/DSM/SJER_dsmCrop.tif")
+SJER_DSM_hill <- rast("data/NEON-DS-Airborne-Remote-Sensing/SJER/DSM/SJER_DSMhill_WGS84.tif")
+```
+
+```{r}
+# #check the crs for both rasters
+crs(SJER_DSM)
+# crs(SJER_DSM_hill)
+#not the same
+```
+
+```{r}
+#reproject the hillshade to match the DSM
+SJER_DSM_hill_reproj <- project(SJER_DSM_hill, crs(SJER_DSM), res=res(SJER_DSM))
+```
+
+```{r}
+#create a dataframe of the newly reprojected hillshade
+SJER_DSM_df <- as.data.frame(SJER_DSM, xy=TRUE)
+SJER_DSM_hill_reproj_df <- as.data.frame(SJER_DSM_hill_reproj, xy=TRUE)
+```
+
+```{r}
+#plot the data
+ggplot()+
+    geom_raster(data= SJER_DSM_df,
+              aes(x = x, 
+                  y = y,
+                  fill = SJER_dsmCrop)) +
+  geom_raster(data = SJER_DSM_hill_reproj_df,
+              aes(x = x, 
+                  y = y,
+                  alpha = SJER_DSMhill_WGS84)) +
+  coord_quickmap()+
+ scale_fill_viridis_c()+
+  scale_alpha(range = c(0.65, 0.15), guide = "none") +
+     coord_quickmap() 
+```
+
+# Raster Calculations:
+
+```{r}
+# Load in the data
+DTM_HARV <- rast("data/NEON-DS-Airborne-Remote-Sensing/HARV/DTM/HARV_dtmCrop.tif")
+DSM_HARV <- rast("data/NEON-DS-Airborne-Remote-Sensing/HARV/DSM/HARV_dsmCrop.tif")
+
+#quick look at the data
+# plot(DTM_HARV)
+# plot(DSM_HARV)
+```
+
+## Quick way to do raster math:
+
+Appropriate approach to raster calculations this way if:
+
+1.  The rasters we are using are small in size.
+
+2.  The calculations we are performing are simple.
+
+```{r}
+#calculate the canopy height model
+CHM_HARV <- DSM_HARV - DTM_HARV
+plot(CHM_HARV)
+```
+
+## Calculate using Lapp()
+
+-   Raster math is a less efficient approach as computation becomes more complex or as file sizes become large.
+
+-   The lapp() function takes two or more rasters and applies a function to them using efficient processing methods. The syntax is:
+
+outputRaster \<- lapp(x, fun=functionName)
+
+-   To create a SpatRasterDataset, we call the function sds which can take a list of raster objects (each one created by calling rast).
+
+-   Function Review: A custom function consists of a defined set of commands performed on a input object. Custom functions are particularly useful for tasks that need to be repeated over and over in the code. A simplified syntax for writing a custom function in R is: function_name \<- function(variable1, variable2) { WhatYouWantDone, WhatToReturn}
+
+For example: percentage \<- function(x) { x/100 } percentage (89)
+
+```{r}
+#Compute difference using lapp()
+CHM_HARV_lapp <- lapp(sds(list(DSM_HARV, DTM_HARV)), 
+                    fun = function(r1, r2) {
+                      return(r1 - r2) 
+                      })
+
+# we expect two rasters and we want to subtract them
+```
+
+```{r}
+#next we need to convert our CHM to a dataframe
+CHM_HARV_lapp_df <- as.data.frame(CHM_HARV, xy=TRUE)
+```
+
+```{r}
+#plot the data
+ ggplot() +
+   geom_raster(data = CHM_HARV_lapp_df, 
+               aes(x = x, y = y, fill = HARV_dsmCrop)) + 
+   scale_fill_gradientn(name = "Canopy Height", colors = terrain.colors(10)) + 
+   coord_quickmap()
+```

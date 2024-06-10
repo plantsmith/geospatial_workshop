@@ -1,0 +1,99 @@
+---
+title: "Geospatial Raster and Vector Workshop"
+author: "Natalie Smith"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(terra)
+```
+- Use 'describe' to load in .tif data (pulls from terra package)
+
+```{r}
+# Load in the data
+describe("data/NEON-DS-Airborne-Remote-Sensing/HARV/DSM/HARV_dsmCrop.tif")  
+```
+
+- This doesn't add anything to the environment, but it gives us statistics on the geography
+- To load the raster data into the environment use 'rast'
+
+```{r}
+HARV_DSM <- rast("data/NEON-DS-Airborne-Remote-Sensing/HARV/DSM/HARV_dsmCrop.tif")  
+```
+
+- Summary Stats:
+```{r}
+# quick summary
+HARV_DSM 
+# more summary statistics (this takes a sample)
+summary(HARV_DSM)
+# values uses all of the data
+summary(values(HARV_DSM))
+```
+
+```{r}
+#transform raster to data frame
+#xy - making the columns in data frame
+HARV_DSM_df <- as.data.frame(HARV_DSM, xy=TRUE)
+
+str(HARV_DSM_df)
+# str = a diagnostic function and an alternative to summary 
+```
+
+```{r}
+#use crs to check coordinate reference system
+crs(HARV_DSM,proj = TRUE)
+#units in crs are the units of the elevation
+#"+proj=utm +zone=18 +datum=WGS84 +units=m +no_defs"
+```
+
+```{r}
+# plot the data
+ggplot()+
+  geom_raster(data=HARV_DSM_df,
+              aes(x = x, y = y,
+                  fill = HARV_dsmCrop))+
+  scale_fill_viridis_c() +
+  coord_quickmap()
+```
+
+What does coord_quickmap do? Taking our data and projecting it so its nice looking. 
+We didnt specify any parameters, and the default is Mercator projections. Terra has updated and we should be using **coord_sf** in the future.
+
+```{r}
+#this uses the terra package
+plot(HARV_DSM)
+```
+
+
+```{r}
+nlyr(HARV_DSM)
+#how many bands there are in the data
+```
+
+Challenge: Load in other data (HARV_DSMhill) and print CRS
+```{r}
+HARV_DSM_hill <- rast("data/NEON-DS-Airborne-Remote-Sensing/HARV/DSM/HARV_dsmhill.tif") 
+crs(HARV_DSM_hill,proj = TRUE)
+```
+
+```{r}
+#histogram of our elevation data
+ggplot()+
+  geom_histogram(data=HARV_DSM_df,
+                 aes(x = HARV_dsmCrop))+
+  theme_minimal()
+```
+```{r}
+HARV_DSM_df <- HARV_DSM_df %>% 
+  mutate(fct_elevation = cut (HARV_dsmCrop,
+                              breaks = 3))
+```
+
+
+
+
+
+
